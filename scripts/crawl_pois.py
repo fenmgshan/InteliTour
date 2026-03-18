@@ -62,7 +62,7 @@ def crawl_pois():
     # 1. 景点 tourism=*
     print("正在爬取景点数据...")
     try:
-        tourism_gdf = ox.features_from_point(
+        tourism_gdf = ox.geometries_from_point(
             (CENTER_LAT, CENTER_LNG), dist=RADIUS,
             tags={"tourism": True}
         )
@@ -99,7 +99,7 @@ def crawl_pois():
     # 2. 餐饮 amenity=restaurant|cafe|fast_food
     print("正在爬取餐饮数据...")
     try:
-        food_gdf = ox.features_from_point(
+        food_gdf = ox.geometries_from_point(
             (CENTER_LAT, CENTER_LNG), dist=RADIUS,
             tags={"amenity": ["restaurant", "cafe", "fast_food"]}
         )
@@ -133,7 +133,7 @@ def crawl_pois():
     # 3. 卫生间 amenity=toilets
     print("正在爬取卫生间数据...")
     try:
-        toilet_gdf = ox.features_from_point(
+        toilet_gdf = ox.geometries_from_point(
             (CENTER_LAT, CENTER_LNG), dist=RADIUS,
             tags={"amenity": "toilets"}
         )
@@ -164,7 +164,7 @@ def crawl_pois():
     # 4. 便利店/超市 shop=convenience|supermarket
     print("正在爬取便利店/超市数据...")
     try:
-        shop_gdf = ox.features_from_point(
+        shop_gdf = ox.geometries_from_point(
             (CENTER_LAT, CENTER_LNG), dist=RADIUS,
             tags={"shop": ["convenience", "supermarket"]}
         )
@@ -203,7 +203,7 @@ def crawl_buildings():
     print("正在爬取建筑物数据...")
     all_buildings = []
     try:
-        building_gdf = ox.features_from_point(
+        building_gdf = ox.geometries_from_point(
             (CENTER_LAT, CENTER_LNG), dist=RADIUS,
             tags={"building": True}
         )
@@ -243,13 +243,11 @@ def crawl_buildings():
 
 def save_pois_to_mysql(pois_data):
     """写入 POI 到 MySQL"""
-    engine = get_engine()
-    with engine.connect() as conn:
-        conn.execute(text("DELETE FROM pois"))
-        conn.commit()
-
     session = get_session()
     try:
+        session.execute(text("DELETE FROM pois"))
+        session.commit()
+
         objects = [POI(**p) for p in pois_data]
         session.bulk_save_objects(objects)
         session.commit()
@@ -260,13 +258,11 @@ def save_pois_to_mysql(pois_data):
 
 def save_buildings_to_mysql(buildings_data):
     """写入建筑物到 MySQL"""
-    engine = get_engine()
-    with engine.connect() as conn:
-        conn.execute(text("DELETE FROM buildings"))
-        conn.commit()
-
     session = get_session()
     try:
+        session.execute(text("DELETE FROM buildings"))
+        session.commit()
+
         objects = [Building(**b) for b in buildings_data]
         session.bulk_save_objects(objects)
         session.commit()

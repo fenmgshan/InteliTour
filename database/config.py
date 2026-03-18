@@ -3,10 +3,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-DATABASE_URL = "mysql+pymysql://root@localhost:3306/intelitour?charset=utf8mb4"
+DATABASE_URL = "mysql+pymysql://intelitour_user:mypassword@localhost:3306/intelitour?charset=utf8mb4"
 
 # 不指定数据库的连接，用于创建数据库
-SERVER_URL = "mysql+pymysql://root@localhost:3306/?charset=utf8mb4"
+SERVER_URL = "mysql+pymysql://intelitour_user:mypassword@localhost:3306/?charset=utf8mb4"
 
 _engine = None
 

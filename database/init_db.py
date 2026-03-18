@@ -12,13 +12,12 @@ from database.models import Base
 
 def create_database():
     """创建 intelitour 数据库（如不存在）"""
-    engine = create_engine(SERVER_URL, echo=False)
+    engine = create_engine(SERVER_URL, echo=False, isolation_level="AUTOCOMMIT")
     with engine.connect() as conn:
         conn.execute(text(
             "CREATE DATABASE IF NOT EXISTS intelitour "
             "DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
         ))
-        conn.commit()
     engine.dispose()
     print("[OK] 数据库 intelitour 已创建/已存在")
 

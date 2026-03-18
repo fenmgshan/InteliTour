@@ -45,16 +45,15 @@ def detect_node_type(G, node_id):
 
 def save_to_mysql(G):
     """将路网数据写入 MySQL"""
-    engine = get_engine()
-
-    # 清空已有数据
-    with engine.connect() as conn:
-        conn.execute(text("DELETE FROM road_edges"))
-        conn.execute(text("DELETE FROM road_nodes"))
-        conn.commit()
-
     session = get_session()
     try:
+
+        session.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
+        session.execute(text("DELETE FROM road_edges"))
+        session.execute(text("DELETE FROM road_nodes"))
+        session.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
+        session.commit()
+
         # 写入节点
         nodes_data = []
         for node_id, data in G.nodes(data=True):
