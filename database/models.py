@@ -2,9 +2,10 @@
 
 from sqlalchemy import (
     Column, BigInteger, Integer, Float, String, Boolean, Text,
-    ForeignKey, Index
+    ForeignKey, Index, LargeBinary, DateTime
 )
 from sqlalchemy.orm import declarative_base, relationship
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -136,4 +137,22 @@ class IndoorMap(Base):
 
     __table_args__ = (
         Index("idx_indoor_maps_building", "building_id"),
+    )
+
+
+class Diary(Base):
+    """旅游日记"""
+    __tablename__ = "diaries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(255), nullable=False, comment="标题（B+树索引，精确查找）")
+    author = Column(String(100), default="匿名", comment="作者")
+    destination = Column(String(255), default="", comment="目的地名称")
+    content_compressed = Column(LargeBinary, nullable=False, comment="zlib压缩后的正文")
+    rating = Column(Float, default=0.0, comment="评分 0-5")
+    created_at = Column(DateTime, default=datetime.utcnow, comment="发布时间")
+
+    __table_args__ = (
+        Index("idx_diaries_title", "title"),
+        Index("idx_diaries_destination", "destination"),
     )
