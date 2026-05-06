@@ -119,10 +119,11 @@ function clearExploreAll() {
   store.clearExplore()
 }
 
-function addExploreMarker(item, emoji) {
+function addExploreMarker(item, emoji, label) {
+  const tip = label ?? item.name
   const m = new AMap.Marker({
     position: [item.lng, item.lat],
-    content: `<div style="font-size:20px;line-height:1;cursor:default" title="${item.name}">${emoji}</div>`,
+    content: `<div style="font-size:20px;line-height:1;cursor:default;position:relative" title="${tip}">${emoji}<span style="display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;padding:2px 6px;border-radius:3px;font-size:11px;white-space:nowrap;pointer-events:none" class="tip">${tip}</span></div>`,
     offset: new AMap.Pixel(-10, -10)
   })
   map.add(m)
@@ -142,7 +143,7 @@ async function queryNearby(category) {
     if (!res.ok) return
     const data = await res.json()
     store.setExploreResults(data)
-    data.forEach(item => addExploreMarker(item, EMOJI[category] ?? '📍'))
+    data.forEach(item => addExploreMarker(item, EMOJI[category] ?? '📍', category === 'toilet' ? '卫生间' : item.name))
   } finally {
     exploreLoading.value = false
   }
@@ -301,4 +302,8 @@ onUnmounted(() => map?.destroy())
 .card-name { font-weight: 600; }
 .card-meta { color: #1677ff; font-size: 12px; }
 .card-addr { color: #888; font-size: 12px; word-break: break-all; }
+</style>
+
+<style>
+div:hover > .tip { display: block !important; }
 </style>
