@@ -151,7 +151,7 @@ def _load_food_pois(cuisine: str = "") -> list[POI]:
     session = get_session()
     try:
         q = session.query(POI).filter(
-            POI.category.in_(["restaurant", "cafe", "fast_food", "food"])
+            POI.category.in_(["餐厅", "restaurant", "cafe", "fast_food", "food"])
         )
         if cuisine:
             q = q.filter(POI.sub_category.like(f"%{cuisine}%"))

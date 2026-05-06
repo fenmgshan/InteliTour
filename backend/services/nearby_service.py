@@ -67,19 +67,23 @@ def _quicksort(items: list, key) -> list:
 # 公开接口
 # ══════════════════════════════════════════════════════════
 
+_CATEGORY_MAP = {"toilet": "卫生间", "supermarket": "超市", "restaurant": "餐厅"}
+
+
 def find_nearby(origin_lat: float, origin_lng: float,
                 category: str, max_dist: float, limit: int) -> list[dict]:
     """周边设施查询。
 
     Args:
         origin_lat/lng: 起点坐标
-        category: 设施类别（对应 POI.category）
+        category: 设施类别（对应 POI.category，支持英文别名）
         max_dist: 最大路网距离（米）
         limit: 最多返回数量
 
     Returns:
         按路网距离升序排列的设施列表
     """
+    category = _CATEGORY_MAP.get(category, category)
     # 1. 吸附起点
     service = get_snap_service()
     node_id, _, _, _ = service.snap_point(origin_lat, origin_lng)
