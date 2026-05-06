@@ -75,3 +75,17 @@
   - 路由新增 /diary/:id → Detail.vue
 
   日记首页卡片点击已通过 $router.push('/diary/${d.id}') 跳转到详情页。
+
+● 构建成功。本次修改总结：
+
+  后端
+  - redis_service.py：新增 add_rating()（累加总分+计数，返回平均分）和 get_avg_rating() 读取平均分
+  - diary_service.py：_to_dict / _brief_dict / recommend_diaries 全部改用 get_avg_rating 读取
+  Redis动态平均分，不再读MySQL静态字段
+  - routers/diary.py：rate 接口改用 add_rating，返回最新平均分
+
+  前端
+  - Detail.vue：评分成功后用接口返回的 result.rating 实时更新页面显示
+
+  评分逻辑：每次提交 → Redis rating_sum += score，rating_count += 1，展示值= sum / count。
+

@@ -56,7 +56,8 @@ async function submitRating() {
     return
   }
   try {
-    await diaryApi.rate(route.params.id, userRating.value)
+    const result = await diaryApi.rate(route.params.id, userRating.value)
+    diary.value.rating = result.rating
     ElMessage.success('评分成功')
     ratingCooldown.value = true
     setTimeout(() => ratingCooldown.value = false, 2000)
