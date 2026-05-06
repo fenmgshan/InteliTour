@@ -27,3 +27,6 @@ Thumbs.db
 
 # Environment variables
 .env
+
+# frontend npm package
+frontend/node_modules
