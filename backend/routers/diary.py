@@ -45,6 +45,15 @@ def get_diary(diary_id: int):
     return result
 
 
+@router.post("/{diary_id}/rate", summary="评分")
+def rate_diary(diary_id: int, score: float):
+    from backend.services.redis_service import set_rating, get_rating
+    if not (0.0 <= score <= 5.0):
+        raise HTTPException(status_code=400, detail="评分范围 0-5")
+    set_rating("diary", diary_id, score)
+    return {"id": diary_id, "rating": get_rating("diary", diary_id)}
+
+
 @router.post("/{diary_id}/view", summary="手动触发热度+1")
 def view_diary(diary_id: int):
     from backend.services.redis_service import incr_heat

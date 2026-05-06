@@ -6,6 +6,7 @@ export const diaryApi = {
   search: (mode, q) => post(`${BASE}/search`, { mode, q }),
   get: (id) => fetch(`${BASE}/${id}`).then(r => r.json()),
   delete: (id) => fetch(`${BASE}/${id}`, { method: 'DELETE' }).then(r => r.json()),
+  rate: (id, score) => post(`${BASE}/${id}/rate?score=${score}`, {}),
 }
 
 function post(url, body) {

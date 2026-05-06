@@ -62,3 +62,16 @@
   - list：从 POST 改为 GET /api/diary/recommend?n=10
 
   现在发布日记和加载推荐列表应该都能正常工作了。 
+
+● 构建成功。本次实现内容：
+  后端
+  - 新增 POST /api/diary/{id}/rate?score= 评分接口  
+  前端                     
+  - 新建 src/views/diary/Detail.vue：    
+    - 进入页面自动调用 GET /api/diary/{id}（热度+1）
+    - 右侧固定侧边栏：el-rate 星级评分 +删除按钮  
+    - 评分 2s冷却，冷却内点击提示"暂时无法评分"
+    - 删除需二次确认，成功后跳回/diary
+  - 路由新增 /diary/:id → Detail.vue
+
+  日记首页卡片点击已通过 $router.push('/diary/${d.id}') 跳转到详情页。
