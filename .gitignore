@@ -30,3 +30,6 @@ Thumbs.db
 
 # frontend npm package
 frontend/node_modules
+
+# python crawl scripts cache
+scripts/cache
