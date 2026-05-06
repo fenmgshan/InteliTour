@@ -2,6 +2,7 @@
   <div class="publish-page">
     <div class="form">
       <el-input v-model="title" placeholder="日记标题" size="large" maxlength="255" show-word-limit />
+      <el-input v-model="author" placeholder="作者昵称（选填，默认匿名）" maxlength="100" />
       <el-input v-model="destination" placeholder="目的地（选填）" maxlength="255" />
 
       <div style="border:1px solid #d9d9d9;border-radius:4px;overflow:hidden">
@@ -21,12 +22,14 @@
 <script setup>
 import { ref, shallowRef, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { diaryApi } from '../../api/diary'
 
 const router = useRouter()
 const title = ref('')
+const author = ref('')
 const destination = ref('')
 const loading = ref(false)
 const editorRef = shallowRef(null)
@@ -39,7 +42,7 @@ async function submit() {
   if (!html || html === '<p><br></p>') return ElMessage.warning('请填写内容')
   loading.value = true
   try {
-    await diaryApi.create({ title: title.value.trim(), destination: destination.value.trim(), content: html, author: '匿名', rating: 0 })
+    await diaryApi.create({ title: title.value.trim(), destination: destination.value.trim(), content: html, author: author.value.trim() || '匿名', rating: 0 })
     ElMessage.success('发布成功')
     router.push('/diary')
   } catch {
