@@ -1,5 +1,5 @@
 <template>
-  <div id="map-container" style="width:100%;height:calc(100vh - 44px);margin-top:44px"></div>
+  <div id="map-container" style="width:100%;height:calc(100vh + 100px);margin-top:44px"></div>
 
   <div class="mode-toggle">
     <button :class="['mode-btn', store.mode==='route' && 'active']" @click="store.mode='route'">路线规划</button>
@@ -250,7 +250,7 @@ onUnmounted(() => map?.destroy())
 <style scoped>
 .panel {
   position: fixed;
-  top: 20px;
+  top: 64px;
   left: 20px;
   width: 240px;
   background: white;
@@ -261,6 +261,7 @@ onUnmounted(() => map?.destroy())
   display: flex;
   flex-direction: column;
   gap: 8px;
+  z-index: 101;
 }
 .panel-title { font-weight: bold; font-size: 15px; }
 .point-item { display: flex; align-items: center; gap: 6px; word-break: break-all; }
@@ -279,18 +280,19 @@ onUnmounted(() => map?.destroy())
 }
 .result { background: #f0f7ff; border-radius: 4px; padding: 8px; line-height: 1.8; }
 .mode-toggle {
-  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 64px; left: 50%; transform: translateX(-50%);
   display: flex; background: white; border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2); overflow: hidden; z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2); overflow: hidden; z-index: 101;
 }
 .mode-btn { padding: 6px 18px; border: none; background: transparent; cursor: pointer; font-size: 13px; }
 .mode-btn.active { background: #1677ff; color: white; }
 .explore-panel {
-  position: fixed; top: 20px; right: 20px; width: 260px;
-  max-height: calc(100vh - 40px); overflow-y: auto;
+  position: fixed; top: 64px; right: 20px; width: 260px;
+  max-height: calc(100vh - 64px); overflow-y: auto;
   background: white; border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.25); padding: 14px;
   font-size: 13px; display: flex; flex-direction: column; gap: 8px;
+  z-index: 101;
 }
 .cat-btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .cat-btn { padding: 4px 10px; border: 1px solid #d9d9d9; border-radius: 4px; background: #fafafa; cursor: pointer; font-size: 12px; }

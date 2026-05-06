@@ -8,8 +8,8 @@
 <style scoped>
 .diary-page {
   max-width: 800px;
-  margin: 60px auto;
-  padding: 24px;
+  margin: 0 auto;
+  padding: 64px 24px 24px;
   font-size: 15px;
 }
 .placeholder { color: #888; }
