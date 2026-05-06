@@ -6,5 +6,6 @@ export default createRouter({
   routes: [
     { path: '/', component: MapView },
     { path: '/diary', component: () => import('../views/diary/Index.vue') },
+    { path: '/diary/publish', component: () => import('../views/diary/Publish.vue') },
   ]
 })
