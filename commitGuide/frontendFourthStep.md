@@ -28,20 +28,37 @@
   - 列表卡片字段：标题、目的地标签、👀 热度、⭐ 评分、作者
   - 右下角悬浮按钮（FAB）→ 跳转至 /diary/publish 发布页（待后续创建）
 
-● 构建成功。已修复编辑器问题：                                                                         
-                                                                                                       
-  问题原因：                                                                                           
-  v-model 绑定干扰了 WangEditor 的内部状态管理，导致键盘输入被阻断。                                   
-                                                                                                       
-  修改内容：                                                                                           
-  1. 移除了 <Editor> 组件上的 v-model="html"                                                           
-  2. 改为在提交时通过 editorRef.value.getHtml() 获取内容                                               
-  3. 删除了不再需要的 html ref                                                                         
+● 构建成功。已创建内容摘要：
+
+  src/views/diary/Publish.vue
+  - 标题（必填） + 目的地（选填）
+  - 集成 WangEditor 富文本编辑器（含完整工具栏）
+  - 提交表单 → 调用 diaryApi.create() → 发布成功后跳转至 /diary
+  - 使用 ElMessage 处理表单校验提示与操作反馈
+
+  新增路由：/diary/publish（已配置路由懒加载）
+  
+● 构建成功。已修复编辑器问题：
+  问题原因：
+  v-model 绑定干扰了 WangEditor 的内部状态管理，导致键盘输入被阻断。
+  修改内容：
+
+  1. 移除了 <Editor> 组件上的 v-model="html"
+  2. 改为在提交时通过 editorRef.value.getHtml() 获取内容
+  3. 删除了不再需要的 html ref   
 
   现在编辑器应该可以正常使用：
+
   - ✅ Backspace 删除文字
   - ✅ 选择文字后删除
   - ✅ 方向键移动光标
   - ✅ 输入标点符号
 
   所有键盘操作已恢复正常。
+
+● 构建成功。修复内容：
+
+  - create：路径从 /api/diary/create 改为 /api/diary
+  - list：从 POST 改为 GET /api/diary/recommend?n=10
+
+  现在发布日记和加载推荐列表应该都能正常工作了。 
