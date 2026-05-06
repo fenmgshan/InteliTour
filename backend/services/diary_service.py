@@ -20,7 +20,7 @@ from whoosh.writing import AsyncWriter
 from database.config import get_session
 from database.models import Diary
 from backend.services.redis_service import (
-    incr_heat, get_heat, get_all_heats, get_all_ratings, set_rating
+    incr_heat, get_heat, get_all_heats, get_avg_rating, add_rating
 )
 from backend.services.heap_service import top_n
 
@@ -211,7 +211,6 @@ def recommend_diaries(n: int = 10) -> List[dict]:
             return []
 
         heats = get_all_heats("diary")
-        ratings = get_all_ratings("diary")
 
         # 归一化用最大值
         max_heat = max((float(v) for v in heats.values()), default=1.0) or 1.0
@@ -219,7 +218,7 @@ def recommend_diaries(n: int = 10) -> List[dict]:
 
         def score(diary: Diary) -> float:
             h = heats.get(str(diary.id), 0.0)
-            r = ratings.get(str(diary.id), diary.rating or 0.0)
+            r = get_avg_rating("diary", diary.id)
             return 0.6 * (h / max_heat) + 0.4 * (r / max_rating)
 
         top = top_n(rows, score, n)
@@ -246,7 +245,7 @@ def _to_dict(diary: Diary, content: str, heat: float) -> dict:
         "author": diary.author,
         "destination": diary.destination,
         "content": content,
-        "rating": diary.rating,
+        "rating": get_avg_rating("diary", diary.id),
         "heat": heat,
         "created_at": diary.created_at,
     }
@@ -259,7 +258,7 @@ def _brief_dict(diary: Diary) -> dict:
         "title": diary.title,
         "author": diary.author,
         "destination": diary.destination,
-        "rating": diary.rating,
+        "rating": get_avg_rating("diary", diary.id),
         "heat": heat,
         "created_at": diary.created_at,
     }

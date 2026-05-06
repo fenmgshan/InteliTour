@@ -18,7 +18,7 @@ from database.config import get_session
 from database.models import POI
 from backend.services.graph_service import get_graph, WALK_SPEED
 from backend.services.snap_service import get_snap_service
-from backend.services.redis_service import get_heat, get_all_heats, get_all_ratings
+from backend.services.redis_service import get_heat, get_all_heats, get_all_avg_ratings
 from backend.services.heap_service import top_n
 
 # 餐饮相关的 category/sub_category 关键词
@@ -194,7 +194,7 @@ def recommend_food(origin_lat: float, origin_lng: float,
         return []
 
     heats = get_all_heats("food")
-    ratings = get_all_ratings("food")
+    ratings = get_all_avg_ratings("food")
 
     # 预计算距离（批量，避免重复 Dijkstra）
     dist_cache: dict[int, float] = {}

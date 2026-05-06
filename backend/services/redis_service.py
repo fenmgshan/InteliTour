@@ -37,15 +37,31 @@ def get_all_heats(namespace: str) -> dict[str, float]:
 
 # ── 评分 ──────────────────────────────────────────────────
 
-def set_rating(namespace: str, item_id: int, score: float) -> None:
-    get_redis().hset(f"{namespace}:rating", str(item_id), score)
+def add_rating(namespace: str, item_id: int, score: float) -> float:
+    """累加评分，返回新平均分。"""
+    r = get_redis()
+    r.hincrbyfloat(f"{namespace}:rating_sum", str(item_id), score)
+    r.hincrby(f"{namespace}:rating_count", str(item_id), 1)
+    total = float(r.hget(f"{namespace}:rating_sum", str(item_id)) or 0)
+    count = int(r.hget(f"{namespace}:rating_count", str(item_id)) or 1)
+    return round(total / count, 2)
 
 
-def get_rating(namespace: str, item_id: int) -> float:
-    val = get_redis().hget(f"{namespace}:rating", str(item_id))
-    return float(val) if val else 0.0
+def get_avg_rating(namespace: str, item_id: int) -> float:
+    r = get_redis()
+    total = float(r.hget(f"{namespace}:rating_sum", str(item_id)) or 0)
+    count = int(r.hget(f"{namespace}:rating_count", str(item_id)) or 0)
+    return round(total / count, 2) if count > 0 else 0.0
 
 
-def get_all_ratings(namespace: str) -> dict[str, float]:
-    raw = get_redis().hgetall(f"{namespace}:rating")
-    return {k: float(v) for k, v in raw.items()}
+def get_all_avg_ratings(namespace: str) -> dict[str, float]:
+    r = get_redis()
+    sums = r.hgetall(f"{namespace}:rating_sum")
+    counts = r.hgetall(f"{namespace}:rating_count")
+    result = {}
+    for k, s in sums.items():
+        c = int(counts.get(k, 1))
+        result[k] = round(float(s) / c, 2) if c > 0 else 0.0
+    return result
+
+
