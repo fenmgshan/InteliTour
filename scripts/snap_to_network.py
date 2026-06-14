@@ -71,6 +71,26 @@ class SnapService:
         dist = haversine(lat, lng, node_lat, node_lng)
         return node_id, node_lat, node_lng, dist
 
+    def snap_nearest_k(self, lat, lng, k: int = 3):
+        """将坐标吸附到最近的 K 个路网节点（多候选，用于择优路由）。
+
+        Returns:
+            [(node_id, node_lat, node_lng, distance_meters), ...]
+            按直线距离升序排列，最多 K 个。
+        """
+        k = min(k, len(self._node_ids))
+        dists, idxs = self._tree.query([lat, lng], k=k)
+        if k == 1:
+            dists, idxs = [dists], [idxs]
+        results = []
+        for i in range(k):
+            idx = idxs[i]
+            node_id = self._node_ids[idx]
+            node_lat, node_lng = self._coords[idx]
+            dist = haversine(lat, lng, node_lat, node_lng)
+            results.append((node_id, node_lat, node_lng, dist))
+        return results
+
 
 def snap_all_pois(service):
     """吸附所有 POI 到最近路网节点"""

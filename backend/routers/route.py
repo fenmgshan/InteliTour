@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/route", tags=["route"])
 
 
 def _snap(lat: float, lng: float):
-    """吸附坐标并返回图中使用的节点 ID。"""
+    """吸附坐标并返回图中使用的节点 ID（单候选）。"""
     service = get_snap_service()
     node_id, _, _, _ = service.snap_point(lat, lng)
     G = get_graph()
@@ -35,6 +35,28 @@ def _snap(lat: float, lng: float):
     if str_id in G:
         return str_id
     raise ValueError(f"吸附节点 {node_id} (type={type(node_id).__name__}) 不在图中")
+
+
+def _snap_nearest_k(lat: float, lng: float, k: int = 3):
+    """多候选吸附，返回图中存在的 K 个最近节点 ID。
+
+    直线最近 ≠ 路网最优入口。多候选可避免吸附到立交桥对面、
+    断头路等导致绕路的节点。
+    """
+    service = get_snap_service()
+    candidates = service.snap_nearest_k(lat, lng, k)
+    G = get_graph()
+    result = []
+    for node_id, _, _, _ in candidates:
+        if node_id in G:
+            result.append(node_id)
+        else:
+            str_id = str(node_id)
+            if str_id in G:
+                result.append(str_id)
+    if not result:
+        raise ValueError(f"坐标 ({lat}, {lng}) 附近无路网节点")
+    return result
 
 
 @router.post(
@@ -49,19 +71,32 @@ def shortest_path(req: ShortestPathRequest):
             detail=f"不支持的策略: {req.strategy}，可选: {list(STRATEGY_WEIGHT)}",
         )
     try:
-        origin_node = _snap(req.origin.lat, req.origin.lng)
-        dest_node = _snap(req.destination.lat, req.destination.lng)
+        # 多候选吸附：直线最近 ≠ 路网最优入口
+        origin_nodes = _snap_nearest_k(req.origin.lat, req.origin.lng)
+        dest_nodes = _snap_nearest_k(req.destination.lat, req.destination.lng)
 
-        path_coords, total_distance, total_time = dijkstra_shortest_path(
-            origin_node, dest_node, req.strategy
-        )
+        best = None
+        for o in origin_nodes:
+            for d in dest_nodes:
+                try:
+                    path_coords, dist, time_val = dijkstra_shortest_path(o, d, req.strategy)
+                    if best is None or dist < best[1]:
+                        best = (path_coords, dist, time_val)
+                except Exception:
+                    continue
 
+        if best is None:
+            raise HTTPException(status_code=500, detail="无法找到连通路径")
+
+        path_coords, total_distance, total_time = best
         return ShortestPathResponse(
             path=path_coords,
             total_distance=round(total_distance, 2),
             total_time=round(total_time, 2),
             strategy=req.strategy,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -90,12 +125,27 @@ def tsp_route(req: TSPRequest):
         )
 
     try:
-        origin_node = _snap(req.origin.lat, req.origin.lng)
+        # 途经点精确吸附（用户手动点击），起点多候选择优
         waypoint_nodes = [_snap(wp.lat, wp.lng) for wp in req.waypoints]
+        origin_candidates = _snap_nearest_k(req.origin.lat, req.origin.lng)
 
-        order, segments, _ = solve_tsp(
-            origin_node, waypoint_nodes, req.strategy, req.round_trip
-        )
+        best = None  # (order, segments, G_ref for response)
+
+        for o in origin_candidates:
+            try:
+                order, segments, _ = solve_tsp(
+                    o, waypoint_nodes, req.strategy, req.round_trip
+                )
+                seg_total_dist = sum(s[1] for s in segments)
+                if best is None or seg_total_dist < best[0]:
+                    best = (seg_total_dist, order, segments)
+            except Exception:
+                continue
+
+        if best is None:
+            raise HTTPException(status_code=500, detail="无法找到连通路径")
+
+        _, order, segments = best
 
         # 构造响应
         G = get_graph()
@@ -144,6 +194,8 @@ def tsp_route(req: TSPRequest):
             total_distance=round(total_distance, 2),
             total_time=round(total_time, 2),
         )
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
