@@ -12,6 +12,7 @@ from backend.schemas.route import (
     TSPResponse,
     TSPSegment,
 )
+from backend.utils.coords import to_wgs84, to_gcj02, convert_latlng
 from backend.services.snap_service import get_snap_service
 from backend.services.graph_service import get_graph
 from backend.services.route_service import (
@@ -24,10 +25,20 @@ from backend.services.route_service import (
 router = APIRouter(prefix="/api/route", tags=["route"])
 
 
+def _to_wgs84_coords(lat: float, lng: float) -> tuple[float, float]:
+    """前端 AMap 坐标（GCJ-02）→ 后端处理坐标（WGS-84）。"""
+    wgs_lat, wgs_lng = to_wgs84(lat, lng)
+    return wgs_lat, wgs_lng
+
+
 def _snap(lat: float, lng: float):
-    """吸附坐标并返回图中使用的节点 ID（单候选）。"""
+    """吸附坐标并返回图中使用的节点 ID（单候选）。
+
+    自动将前端传入的 GCJ-02 坐标转为 WGS-84 后吸附。
+    """
+    wgs_lat, wgs_lng = _to_wgs84_coords(lat, lng)
     service = get_snap_service()
-    node_id, _, _, _ = service.snap_point(lat, lng)
+    node_id, _, _, _ = service.snap_point(wgs_lat, wgs_lng)
     G = get_graph()
     if node_id in G:
         return node_id
@@ -42,9 +53,11 @@ def _snap_nearest_k(lat: float, lng: float, k: int = 3):
 
     直线最近 ≠ 路网最优入口。多候选可避免吸附到立交桥对面、
     断头路等导致绕路的节点。
+    自动将前端传入的 GCJ-02 坐标转为 WGS-84 后吸附。
     """
+    wgs_lat, wgs_lng = _to_wgs84_coords(lat, lng)
     service = get_snap_service()
-    candidates = service.snap_nearest_k(lat, lng, k)
+    candidates = service.snap_nearest_k(wgs_lat, wgs_lng, k)
     G = get_graph()
     result = []
     for node_id, _, _, _ in candidates:
@@ -89,6 +102,9 @@ def shortest_path(req: ShortestPathRequest):
             raise HTTPException(status_code=500, detail="无法找到连通路径")
 
         path_coords, total_distance, total_time = best
+        # WGS-84 → GCJ-02，使路线与高德地图底图对齐
+        for p in path_coords:
+            convert_latlng(p, "gcj02")
         return ShortestPathResponse(
             path=path_coords,
             total_distance=round(total_distance, 2),
@@ -186,6 +202,12 @@ def tsp_route(req: TSPRequest):
 
             total_distance += seg_dist
             total_time += seg_time
+
+        # WGS-84 → GCJ-02，使路线与高德地图底图对齐
+        # 注意：all_coords 与 seg_responses[*].path 共享同一批 LatLng 对象，
+        # 只转换一次即可，避免重复转换导致二次偏移。
+        for p in all_coords:
+            convert_latlng(p, "gcj02")
 
         return TSPResponse(
             ordered_waypoints=order,
