@@ -4,6 +4,7 @@
   <div class="mode-toggle">
     <button :class="['mode-btn', store.mode==='route' && 'active']" @click="store.mode='route'">路线规划</button>
     <button :class="['mode-btn', store.mode==='explore' && 'active']" @click="store.mode='explore'">周边探索</button>
+    <button :class="['mode-btn', store.mode==='attraction' && 'active']" @click="store.mode='attraction'">景点推荐</button>
   </div>
 
   <div v-if="store.mode==='route'" class="panel">
@@ -72,6 +73,43 @@
 
     <button v-if="store.exploreOrigin" class="btn-clear" @click="clearExploreAll">清除</button>
   </div>
+
+  <div v-if="store.mode==='attraction'" class="explore-panel">
+    <div class="panel-title">景点推荐</div>
+    <div v-if="!store.exploreOrigin" class="hint-text">点击地图选择探索中心</div>
+    <div v-else class="hint-text">{{ fmt(store.exploreOrigin) }}</div>
+
+    <template v-if="store.exploreOrigin">
+      <div class="cat-btns">
+        <button :class="['cat-btn', attractionSubCategory==='' && 'cat-btn-active']" @click="queryAttractions('')">全部</button>
+        <button :class="['cat-btn', attractionSubCategory==='景点' && 'cat-btn-active']" @click="queryAttractions('景点')">景点</button>
+        <button :class="['cat-btn', attractionSubCategory==='博物馆' && 'cat-btn-active']" @click="queryAttractions('博物馆')">博物馆</button>
+        <button :class="['cat-btn', attractionSubCategory==='画廊' && 'cat-btn-active']" @click="queryAttractions('画廊')">画廊</button>
+        <button :class="['cat-btn', attractionSubCategory==='观景台' && 'cat-btn-active']" @click="queryAttractions('观景台')">观景台</button>
+        <button :class="['cat-btn', attractionSubCategory==='主题公园' && 'cat-btn-active']" @click="queryAttractions('主题公园')">主题公园</button>
+        <button :class="['cat-btn', attractionSubCategory==='动物园' && 'cat-btn-active']" @click="queryAttractions('动物园')">动物园</button>
+        <button :class="['cat-btn', attractionSubCategory==='水族馆' && 'cat-btn-active']" @click="queryAttractions('水族馆')">水族馆</button>
+      </div>
+      <div class="sort-row">
+        <span style="color:#888;font-size:12px">排序：</span>
+        <button :class="['sort-btn', attractionSortBy==='heat' && 'sort-btn-active']" @click="attractionSortBy='heat'; queryAttractions(attractionSubCategory)">热度优先</button>
+        <button :class="['sort-btn', attractionSortBy==='distance' && 'sort-btn-active']" @click="attractionSortBy='distance'; queryAttractions(attractionSubCategory)">距离优先</button>
+      </div>
+      <div class="search-row">
+        <input v-model="attractionQuery" class="search-input" placeholder="搜索景点名称…" @keyup.enter="searchAttractions" />
+        <button class="btn-search" @click="searchAttractions">搜</button>
+      </div>
+    </template>
+
+    <div v-if="attractionLoading" class="hint-text">加载中…</div>
+    <div v-for="item in attractionResults" :key="item.id" class="result-card">
+      <div class="card-name" style="cursor:pointer;color:#1677ff" @click="focusAttraction(item)">{{ item.name }}</div>
+      <div class="card-meta">{{ item.sub_category }} · {{ fmtDist(item.distance) }} · 🔥 {{ item.heat }}</div>
+      <div class="card-addr">{{ item.address }}</div>
+    </div>
+
+    <button v-if="store.exploreOrigin" class="btn-clear" @click="clearAttractionAll">清除</button>
+  </div>
 </template>
 
 <script setup>
@@ -89,6 +127,13 @@ let exploreMarkers = []
 
 const fmt = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`
 const fmtDist = (d) => d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1)} km`
+
+const attractionSubCategory = ref('')
+const attractionSortBy = ref('heat')
+const attractionQuery = ref('')
+const attractionLoading = ref(false)
+const attractionResults = ref([])
+const attractionMarkers = []
 
 const EMOJI = { toilet: '🚻', supermarket: '🏪', restaurant: '🍽️', food: '🍔' }
 
@@ -188,6 +233,74 @@ async function searchFood() {
   }
 }
 
+function clearAttractionMarkers() {
+  attractionMarkers.forEach(m => map.remove(m))
+  attractionMarkers.length = 0
+}
+
+function clearAttractionAll() {
+  clearAttractionMarkers()
+  attractionResults.value = []
+  store.clearExplore()
+}
+
+async function queryAttractions(subCategory) {
+  if (!store.exploreOrigin) return
+  attractionSubCategory.value = subCategory
+  attractionLoading.value = true
+  clearAttractionMarkers()
+  try {
+    const { lat, lng } = store.exploreOrigin
+    const res = await fetch('/api/attraction/list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origin_lat: lat, origin_lng: lng, sub_category: subCategory, sort_by: attractionSortBy.value, limit: 30 })
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    attractionResults.value = data
+    data.forEach(item => addAttractionMarker(item))
+  } finally {
+    attractionLoading.value = false
+  }
+}
+
+async function searchAttractions() {
+  if (!attractionQuery.value.trim() || !store.exploreOrigin) return
+  attractionSubCategory.value = ''
+  attractionLoading.value = true
+  clearAttractionMarkers()
+  try {
+    const { lat, lng } = store.exploreOrigin
+    const res = await fetch('/api/attraction/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origin_lat: lat, origin_lng: lng, q: attractionQuery.value.trim(), limit: 30 })
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    attractionResults.value = data
+    data.forEach(item => addAttractionMarker(item))
+  } finally {
+    attractionLoading.value = false
+  }
+}
+
+function addAttractionMarker(item) {
+  const m = new AMap.Marker({
+    position: [item.lng, item.lat],
+    content: '<div style="font-size:18px;line-height:1;cursor:pointer;position:relative" title="' + item.name + '">📍<span style="display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;padding:2px 6px;border-radius:3px;font-size:11px;white-space:nowrap;pointer-events:none" class="tip">' + item.name + '</span></div>',
+    offset: new AMap.Pixel(-9, -9)
+  })
+  map.add(m)
+  attractionMarkers.push(m)
+}
+
+function focusAttraction(item) {
+  map.setCenter([item.lng, item.lat])
+  map.setZoom(16)
+}
+
 async function planRoute() {
   loading.value = true
   try {
@@ -231,6 +344,11 @@ onMounted(async () => {
       clearExploreMarkers()
       store.setExploreOrigin({ lat, lng })
       store.setExploreResults([])
+    } else if (store.mode === 'attraction') {
+      clearAttractionMarkers()
+      attractionResults.value = []
+      store.setExploreOrigin({ lat, lng })
+      queryAttractions(attractionSubCategory.value)
     } else {
       if (!store.origin) {
         store.setOrigin({ lat, lng })
@@ -304,6 +422,10 @@ onUnmounted(() => map?.destroy())
 .card-name { font-weight: 600; }
 .card-meta { color: #1677ff; font-size: 12px; }
 .card-addr { color: #888; font-size: 12px; word-break: break-all; }
+.cat-btn-active { border-color: #1677ff; color: #1677ff; background: #e6f0ff; }
+.sort-row { display: flex; align-items: center; gap: 6px; }
+.sort-btn { padding: 2px 8px; border: 1px solid #d9d9d9; border-radius: 3px; background: #fafafa; cursor: pointer; font-size: 12px; }
+.sort-btn-active { border-color: #1677ff; color: #1677ff; background: #e6f0ff; }
 </style>
 
 <style>

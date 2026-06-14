@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.services.graph_service import init_graph
 from backend.services.snap_service import init_snap_service
-from backend.routers import snap, route, diary, food, nearby
+from backend.routers import snap, route, diary, food, nearby, attraction
 
 
 app = FastAPI(
@@ -54,6 +54,7 @@ app.include_router(route.router)
 app.include_router(diary.router)
 app.include_router(food.router)
 app.include_router(nearby.router)
+app.include_router(attraction.router)
 
 
 if __name__ == "__main__":
