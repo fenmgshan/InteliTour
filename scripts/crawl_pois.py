@@ -21,7 +21,7 @@ from database.models import POI, Building
 
 CENTER_LAT = 39.9042
 CENTER_LNG = 116.3974
-RADIUS = 5000
+RADIUS = 10000
 
 
 # 类别映射：OSM tag 值 -> (category, sub_category)

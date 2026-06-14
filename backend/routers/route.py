@@ -1,5 +1,7 @@
 """路线规划 API（最短路径 + TSP）"""
 
+import traceback
+
 from fastapi import APIRouter, HTTPException
 
 from backend.schemas.route import (
@@ -26,14 +28,13 @@ def _snap(lat: float, lng: float):
     """吸附坐标并返回图中使用的节点 ID。"""
     service = get_snap_service()
     node_id, _, _, _ = service.snap_point(lat, lng)
-    # GraphML 加载后节点 ID 为字符串，需要匹配图中的实际类型
     G = get_graph()
     if node_id in G:
         return node_id
     str_id = str(node_id)
     if str_id in G:
         return str_id
-    raise ValueError(f"吸附节点 {node_id} 不在图中")
+    raise ValueError(f"吸附节点 {node_id} (type={type(node_id).__name__}) 不在图中")
 
 
 @router.post(
@@ -62,6 +63,7 @@ def shortest_path(req: ShortestPathRequest):
             strategy=req.strategy,
         )
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -145,4 +147,5 @@ def tsp_route(req: TSPRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

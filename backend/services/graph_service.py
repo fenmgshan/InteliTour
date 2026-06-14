@@ -1,10 +1,10 @@
 """图加载单例
 
-启动时加载 NetworkX DiGraph 并预计算各策略权重。
+启动时从数据库构建 NetworkX DiGraph 并预计算各策略权重。
 """
 
 import networkx as nx
-from scripts.export_graphml import load_graph
+from scripts.export_graphml import build_graph_from_db
 
 # ── 速度常量 (km/h → m/s) ────────────────────────────────
 WALK_SPEED = 5 * 1000 / 3600      # ≈ 1.39 m/s
@@ -15,34 +15,25 @@ EBIKE_SPEED = 25 * 1000 / 3600    # ≈ 6.94 m/s
 _graph: nx.DiGraph | None = None
 
 
-def _ensure_numeric_attrs(G: nx.DiGraph) -> None:
-    """GraphML 读取后属性都是字符串，统一转为浮点数。"""
-    for _, _, data in G.edges(data=True):
-        data["length"] = float(data.get("length", 0))
-        data["congestion"] = float(data.get("congestion", 1))
-        data["max_speed"] = float(data.get("max_speed", 0))
-    for _, data in G.nodes(data=True):
-        data["lat"] = float(data.get("lat", 0))
-        data["lng"] = float(data.get("lng", 0))
-
-
 def _precompute_weights(G: nx.DiGraph) -> None:
     """为每条边预计算 time / bike / ebike 权重。"""
     for _, _, data in G.edges(data=True):
-        length = data["length"]
-        congestion = data["congestion"] if data["congestion"] > 0 else 1.0
+        length = float(data["length"])
+        congestion = float(data.get("congestion", 1))
+        if congestion <= 0:
+            congestion = 1.0
         data["time"] = length / (WALK_SPEED * congestion)
         data["bike"] = length / (BIKE_SPEED * congestion)
         data["ebike"] = length / (EBIKE_SPEED * congestion)
 
 
 def init_graph() -> None:
-    """加载图并预处理权重（应用启动时调用一次）。"""
+    """从数据库构建图并预处理权重（应用启动时调用一次）。"""
     global _graph
-    G = load_graph()
-    _ensure_numeric_attrs(G)
+    G = build_graph_from_db()
     _precompute_weights(G)
     _graph = G
+    print(f"[启动] 图加载完成: {G.number_of_nodes()} 节点, {G.number_of_edges()} 边")
 
 
 def get_graph() -> nx.DiGraph:

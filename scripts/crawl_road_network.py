@@ -19,7 +19,7 @@ from database.models import RoadNode, RoadEdge
 # 天安门坐标
 CENTER_LAT = 39.9042
 CENTER_LNG = 116.3974
-RADIUS = 5000  # 米
+RADIUS = 10000  # 米
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
