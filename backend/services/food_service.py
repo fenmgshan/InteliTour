@@ -12,8 +12,6 @@ from __future__ import annotations
 import heapq
 from typing import Optional
 
-import networkx as nx
-
 from database.config import get_session
 from database.models import POI
 from backend.services.graph_service import get_graph, WALK_SPEED
@@ -115,6 +113,9 @@ def _get_trie() -> tuple[Trie, dict[int, str]]:
 # 路网距离计算
 # ══════════════════════════════════════════════════════════
 
+_MAX_DIST = 5000.0  # 有界 Dijkstra 搜索半径（米）
+
+
 def _snap_node(lat: float, lng: float):
     """吸附坐标到图节点 ID（处理 int/str 类型差异）。"""
     service = get_snap_service()
@@ -128,18 +129,38 @@ def _snap_node(lat: float, lng: float):
     return None
 
 
-def _road_distance(origin_node, dest_node) -> float:
-    """路网最短距离（米），不可达返回 INF。"""
-    if origin_node is None or dest_node is None:
-        return INF
-    if origin_node == dest_node:
-        return 0.0
+def _bounded_dijkstra(origin_node, max_dist: float) -> dict:
+    """一次有界 Dijkstra，返回 {node_id: distance_meters}。"""
     G = get_graph()
-    try:
-        length = nx.dijkstra_path_length(G, origin_node, dest_node, weight="length")
-        return float(length)
-    except nx.NetworkXNoPath:
+    dist: dict = {origin_node: 0.0}
+    heap = [(0.0, origin_node)]
+    INF = float("inf")
+
+    while heap:
+        d, u = heapq.heappop(heap)
+        if d > dist.get(u, INF):
+            continue
+        if d > max_dist:
+            break
+        for v, edge_data in G[u].items():
+            nd = d + edge_data["length"]
+            if nd <= max_dist and nd < dist.get(v, INF):
+                dist[v] = nd
+                heapq.heappush(heap, (nd, v))
+    return dist
+
+
+def _resolve_dist(reachable: dict, poi) -> float:
+    """从一次 Dijkstra 结果中查表获取 POI 路网距离。"""
+    if poi.snapped_node_id is None:
         return INF
+    snap = poi.snapped_node_id
+    if snap in reachable:
+        return reachable[snap]
+    str_snap = str(snap)
+    if str_snap in reachable:
+        return reachable[str_snap]
+    return INF
 
 
 # ══════════════════════════════════════════════════════════
@@ -189,6 +210,12 @@ def recommend_food(origin_lat: float, origin_lng: float,
     α=0.3, β=0.4, γ=0.3
     """
     origin_node = _snap_node(origin_lat, origin_lng)
+    if origin_node is None:
+        return []
+
+    # 一次有界 Dijkstra，获得起点到所有可达节点的距离（O(E log V)）
+    reachable = _bounded_dijkstra(origin_node, _MAX_DIST)
+
     pois = _load_food_pois(cuisine)
     if not pois:
         return []
@@ -196,17 +223,10 @@ def recommend_food(origin_lat: float, origin_lng: float,
     heats = get_all_heats("food")
     ratings = get_all_avg_ratings("food")
 
-    # 预计算距离（批量，避免重复 Dijkstra）
+    # 从一次 Dijkstra 结果中 O(1) 查表，不再逐点 Dijkstra
     dist_cache: dict[int, float] = {}
     for poi in pois:
-        if poi.snapped_node_id is None:
-            dist_cache[poi.id] = INF
-            continue
-        G = get_graph()
-        dest_node = (poi.snapped_node_id
-                     if poi.snapped_node_id in G
-                     else str(poi.snapped_node_id))
-        dist_cache[poi.id] = _road_distance(origin_node, dest_node)
+        dist_cache[poi.id] = _resolve_dist(reachable, poi)
 
     # 过滤不可达
     reachable = [p for p in pois if dist_cache[p.id] < INF]
@@ -266,21 +286,13 @@ def search_food(q: str, origin_lat: Optional[float], origin_lng: Optional[float]
     if not pois:
         return []
 
-    # Step 3: 计算距离并排序
+    # Step 3: 一次有界 Dijkstra + O(1) 查表计算距离
     origin_node = _snap_node(origin_lat, origin_lng) if origin_lat is not None else None
-    G = get_graph()
-
-    def get_dist(poi: POI) -> float:
-        if origin_node is None or poi.snapped_node_id is None:
-            return INF
-        dest = (poi.snapped_node_id
-                if poi.snapped_node_id in G
-                else str(poi.snapped_node_id))
-        return _road_distance(origin_node, dest)
+    reachable = _bounded_dijkstra(origin_node, _MAX_DIST) if origin_node is not None else {}
 
     results = []
     for poi in pois:
-        d = get_dist(poi)
+        d = _resolve_dist(reachable, poi) if origin_node is not None else INF
         results.append((poi, d))
 
     if origin_node is not None:
